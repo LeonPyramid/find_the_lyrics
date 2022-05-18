@@ -4,11 +4,11 @@ import time
 from lyrics_parser.music_parser import MusicParser
 import dictionary_organizer as do
 
-numthread = 10
+numthread = 5
 
 
 async def parse_lyrics():
-    lst = list(do.read_dictionary_lyrics("data/lyrics.txt").values())
+    lst = list(do.read_dictionary_lyrics("data/lyrics copy.txt").values())
     l_parser = MusicParser()
     dictionnaries = {"fr":{},"en":{}}
     count = [0,0,0]

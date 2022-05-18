@@ -4,8 +4,8 @@ from lyrics_getter.get_lyrics import LyricsGetter
 import dictionary_organizer as do
 
 numMusic = 100000
-numbatch = 25
-web_thread_count = 10
+numbatch = 500
+web_thread_count = 20
 
 def get_lyrics():
     l_getter = LyricsGetter()

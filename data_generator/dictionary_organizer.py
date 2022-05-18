@@ -16,9 +16,12 @@ def write_dictionnary_words(filename,dict):
 
 
 def read_dictionary_lyrics(filename) :
-    with open(filename) as file:
-        data = json.load(file)
-        return data
+    if(path.exists(filename)):
+        with open(filename) as file:
+            data = json.load(file)
+            return data
+    else:
+        return {}
 
 def write_passed_list(filename,list):
     with open(filename, 'wb') as fp:

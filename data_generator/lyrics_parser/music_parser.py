@@ -1,6 +1,7 @@
 from langcodes import Language
 import spacy
 from spacy_langdetect import LanguageDetector
+from functools import partial
 import asyncio
 from asyncio import Queue
 
@@ -10,12 +11,15 @@ class MusicParser:
     __lang_detect:LanguageDetector = None
     __dict_lock = None
     __help_lock = None
+    __progress_done = 0
+    __loop = None
     def __init__(self) -> None:
         self.__fr_nlp = spacy.load("fr_dep_news_trf")
         self.__en_nlp = spacy.load("en_core_web_trf")
         self.__lang_detect = LanguageDetector()
         self.__dict_lock = asyncio.Lock()
         self.__help_lock = asyncio.Lock()
+        self.__loop = asyncio.get_event_loop()
 
         print("Parser loaded")
 
@@ -38,12 +42,13 @@ class MusicParser:
             #    pos = await self.find_type(word)
             if(pos == "VERB" or pos == "NOUN" or pos == "ADJ" or pos == "ADV" or pos == "PROPN") and len(lemma) > 2:
                 async with self.__dict_lock:
-                    if (lemma in dict.keys()):
-                        dict[lemma]["count"] += 1
+                    if ((lemma,pos) in dict.keys()):
+                        dict[(lemma,pos)] += 1
                     else:
-                        dict[lemma] = {"type": pos,"count":1}
+                        dict[(lemma,pos)] = 1
 
-    async def lyrics_analyzer(self,dictionary_dict,count,queue):
+    async def lyrics_analyzer(self,dictionary_dict,count,queue,size):
+        #dictionary_dict = {"en" : {}, "fr": {}}
         while True:
             if (queue.empty()):
                 return
@@ -60,19 +65,23 @@ class MusicParser:
             else :
                 count[0] += 1
             queue.task_done()
+            self.__progress_done += 1
+            prog = "{:.3f}".format(self.__progress_done / size)
+            print("progress: "+ prog +"%",end="\r")
+        return dictionary_dict
 
     async def lyrics_list_analyzer(self,list,dictionary_dict,count,numthread):
-
+        list = list[1:1000]
         queue = Queue(maxsize=len(list))
+        self.__progress_done = 0
         tasks = []
         
         for lyrics in list:
             await queue.put(lyrics)
-        loop = asyncio.get_event_loop()
+        loop = self.__loop
         for i in range(numthread):
-            t = loop.create_task(self.lyrics_analyzer(dictionary_dict,count,queue))
+            t = loop.create_task(self.lyrics_analyzer(dictionary_dict,count,queue,len(list)))
             tasks.append(t)
-        
         await queue.join()
 
         for t in tasks:
