@@ -3,7 +3,7 @@ import pickle
 from os import path
 
 def __rearange_dict(dict):
-    return sorted(dict.items(), key=lambda kv: kv[1]["count"],reverse=True)
+    return sorted(dict.items(), key=lambda kv: kv[1],reverse=True)
 
 def write_dictionary(filename,dict):
     with open(filename, 'w') as convert_file:
@@ -15,7 +15,7 @@ def write_dictionnary_words(filename,dict):
 
 
 
-def read_dictionary_lyrics(filename) :
+def read_dictionary(filename) :
     if(path.exists(filename)):
         with open(filename) as file:
             data = json.load(file)
