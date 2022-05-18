@@ -1,9 +1,11 @@
+import random
 from langcodes import Language
 import spacy
 from spacy_langdetect import LanguageDetector
-from functools import partial
-import asyncio
-from asyncio import Queue
+import threading
+import queue
+
+from torch import rand
 
 class MusicParser:
     __fr_nlp:Language = None
@@ -17,9 +19,8 @@ class MusicParser:
         self.__fr_nlp = spacy.load("fr_dep_news_trf")
         self.__en_nlp = spacy.load("en_core_web_trf")
         self.__lang_detect = LanguageDetector()
-        self.__dict_lock = asyncio.Lock()
-        self.__help_lock = asyncio.Lock()
-        self.__loop = asyncio.get_event_loop()
+        self.__dict_lock = threading.Lock()
+        self.__help_lock = threading.Lock()
 
         print("Parser loaded")
 
@@ -33,60 +34,60 @@ class MusicParser:
             print("dans la phrase : ")
             print(word.sent)
             return input()
-    
-    async def __analyze_lyrics(self,words,dict):
+
+    def __analyze_lyrics(self,words:spacy.Doc,dict,lan):
         for word in words:
             pos = word.pos_
             lemma = word.lemma_
             #if(pos == "X"):
             #    pos = await self.find_type(word)
             if(pos == "VERB" or pos == "NOUN" or pos == "ADJ" or pos == "ADV" or pos == "PROPN") and len(lemma) > 2:
-                async with self.__dict_lock:
-                    if ((lemma,pos) in dict.keys()):
-                        dict[(lemma,pos)] += 1
-                    else:
-                        dict[(lemma,pos)] = 1
+                self.__dict_lock.acquire()
+                if ((lemma,pos) in dict.keys()):
+                    dict[(lemma,pos)] += 1
+                else:
+                    dict[(lemma,pos)] = 1
+                self.__dict_lock.release()
 
-    async def lyrics_analyzer(self,dictionary_dict,count,queue,size):
+    def lyrics_analyzer(self,dictionary_dict,count,queue,size):
         #dictionary_dict = {"en" : {}, "fr": {}}
         while True:
             if (queue.empty()):
                 return
-            lyrics = await queue.get()
+            lyrics = queue.get()
             words = self.__en_nlp(lyrics)
             lang = self.__detect_lang(words)
             if lang == "en":
-                await self.__analyze_lyrics(words,dictionary_dict["en"])
+                self.__analyze_lyrics(words,dictionary_dict["en"],"en")
                 count[2] += 1
             elif lang == "fr":
                 words = self.__fr_nlp(lyrics)
-                await self.__analyze_lyrics(words,dictionary_dict["fr"])
+                self.__analyze_lyrics(words,dictionary_dict["fr"],"fr")
                 count[1] += 1
             else :
                 count[0] += 1
             queue.task_done()
             self.__progress_done += 1
-            prog = "{:.3f}".format(self.__progress_done / size)
+            prog = "{:.3f}".format((self.__progress_done / size)*100)
             print("progress: "+ prog +"%",end="\r")
         return dictionary_dict
 
-    async def lyrics_list_analyzer(self,list,dictionary_dict,count,numthread):
-        list = list[1:1000]
-        queue = Queue(maxsize=len(list))
+
+
+    def lyrics_list_analyzer(self,list,dictionary_dict,count,numthread):
+
+        l_queue = queue.Queue(maxsize=len(list))
         self.__progress_done = 0
         tasks = []
         
         for lyrics in list:
-            await queue.put(lyrics)
-        loop = self.__loop
+            l_queue.put(lyrics)
         for i in range(numthread):
-            t = loop.create_task(self.lyrics_analyzer(dictionary_dict,count,queue,len(list)))
+            t = threading.Thread(target=self.lyrics_analyzer,args=(dictionary_dict,count,l_queue,len(list)))
+            t.start()
             tasks.append(t)
-        await queue.join()
 
         for t in tasks:
-            t.cancel()
-
-        asyncio.gather(*tasks)
+            t.join()
 
 
