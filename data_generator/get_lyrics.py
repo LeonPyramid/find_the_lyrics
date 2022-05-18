@@ -11,7 +11,7 @@ def get_lyrics():
     l_getter = LyricsGetter()
     passed_list = do.get_passed_list("data/passed.txt")
     passed_musics = set(passed_list)
-    dic_list = do.read_dictionary_lyrics("data/lyrics.txt")
+    dic_list = do.read_dictionary("data/lyrics.txt")
     start = time.time()
     cpt = 0
     for _ in range(int(numMusic/numbatch)):
