@@ -35,7 +35,7 @@ class MusicParser:
             print(word.sent)
             return input()
 
-    def __analyze_lyrics(self,words:spacy.Doc,dict,lan):
+    def __analyze_lyrics(self,words,dict,):
         for word in words:
             pos = word.pos_
             lemma = word.lemma_
@@ -48,6 +48,8 @@ class MusicParser:
                 else:
                     dict[(lemma,pos)] = 1
                 self.__dict_lock.release()
+            del pos
+            del lemma
 
     def lyrics_analyzer(self,dictionary_dict,count,queue,size):
         #dictionary_dict = {"en" : {}, "fr": {}}
@@ -58,36 +60,50 @@ class MusicParser:
             words = self.__en_nlp(lyrics)
             lang = self.__detect_lang(words)
             if lang == "en":
-                self.__analyze_lyrics(words,dictionary_dict["en"],"en")
+                self.__analyze_lyrics(words,dictionary_dict["en"])
                 count[2] += 1
             elif lang == "fr":
                 words = self.__fr_nlp(lyrics)
-                self.__analyze_lyrics(words,dictionary_dict["fr"],"fr")
+                self.__analyze_lyrics(words,dictionary_dict["fr"])
                 count[1] += 1
             else :
                 count[0] += 1
             queue.task_done()
             self.__progress_done += 1
-            prog = "{:.3f}".format((self.__progress_done / size)*100)
+            prog = "{:.1f}".format((self.__progress_done / size)*100)
             print("progress: "+ prog +"%",end="\r")
+            del lyrics
+            del words 
+            del lang
+            del prog
         return dictionary_dict
 
 
 
-    def lyrics_list_analyzer(self,list,dictionary_dict,count,numthread):
+    def lyrics_list_analyzer(self,list,dictionary_dict,count,numthread,num_music,passed):
 
-        l_queue = queue.Queue(maxsize=len(list))
+        end = -1 if (passed+num_music > len(list)) else passed+num_music
+        lst = list[passed:end]
+        size = len(lst)
+        
+        l_queue = queue.Queue(maxsize=size)
         self.__progress_done = 0
         tasks = []
         
-        for lyrics in list:
+        for lyrics in lst:
             l_queue.put(lyrics)
         for i in range(numthread):
-            t = threading.Thread(target=self.lyrics_analyzer,args=(dictionary_dict,count,l_queue,len(list)))
+            t = threading.Thread(target=self.lyrics_analyzer,args=(dictionary_dict,count,l_queue,size))
             t.start()
             tasks.append(t)
 
         for t in tasks:
             t.join()
+        l_queue.join()
+        del l_queue
+        del lst
+        del tasks
+        print("\n")
+        return size
 
 

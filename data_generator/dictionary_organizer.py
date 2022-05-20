@@ -33,3 +33,14 @@ def get_passed_list(filename):
             return pickle.load(fp)
     else:
         return []
+
+def get_passed_lyrics(filename):
+    if(path.exists(filename)):
+        with open (filename, 'rb') as fp:
+            return pickle.load(fp)
+    else:
+        return [0,0,0]
+
+def put_passed_lyrics(filename,num):
+    with open(filename, 'wb') as fp:
+        pickle.dump(num, fp)

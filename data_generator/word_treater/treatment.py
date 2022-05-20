@@ -33,7 +33,7 @@ class DictionaryTreater:
 
 
     def get_total(self,dictionary) -> int:
-        return sum(val for val in dictionary.values())
+        return max(val for val in dictionary.values())
 
     def english_remove_profanity(self,dictionary):
         ret = {}
